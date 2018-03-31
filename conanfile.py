@@ -1,4 +1,5 @@
 from conans import ConanFile, tools
+import platform
 
 class ZLibConan(ConanFile):
     name = 'zlib'
@@ -27,8 +28,7 @@ class ZLibConan(ConanFile):
 
         # zlib.h contains the license in the first block comment.
         # Truncate it at the end of that comment.
-        self.run('cp %s/zlib.h %s/%s.txt' % (self.source_dir, self.source_dir, self.name))
-        self.run('sed "/\*\//q" %s/README' % self.source_dir)
+        self.run('sed "/\\*\\//q" %s/zlib.h > %s/%s.txt' % (self.source_dir, self.source_dir, self.name))
 
     def build(self):
         with tools.chdir(self.source_dir):
@@ -53,7 +53,7 @@ class ZLibConan(ConanFile):
         with tools.chdir(self.install_dir):
             if platform.system() == 'Linux':
                 patchelf = self.deps_cpp_info['patchelf'].rootpath + '/bin/patchelf'
-                self.run('%s --set-soname libz.so lib/libzmq.so' % patchelf)
+                self.run('%s --set-soname libz.so lib/libz.so' % patchelf)
 
     def package(self):
         if platform.system() == 'Darwin':
