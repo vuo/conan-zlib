@@ -4,7 +4,7 @@ class ZLibConan(ConanFile):
     name = 'zlib'
 
     source_version = '1.2.8'
-    package_version = '1'
+    package_version = '2'
     version = '%s-%s' % (source_version, package_version)
 
     requires = 'llvm/3.3-1@vuo/stable'
