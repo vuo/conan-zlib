@@ -4,8 +4,8 @@ import platform
 class ZLibConan(ConanFile):
     name = 'zlib'
 
-    source_version = '1.2.8'
-    package_version = '2'
+    source_version = '1.2.11'
+    package_version = '1'
     version = '%s-%s' % (source_version, package_version)
 
     build_requires = 'llvm/3.3-5@vuo/stable'
@@ -23,8 +23,8 @@ class ZLibConan(ConanFile):
             raise Exception('Unknown platform "%s"' % platform.system())
 
     def source(self):
-        tools.get('http://www.zlib.net/fossils/zlib-%s.tar.gz' % self.source_version,
-                  sha256='36658cb768a54c1d4dec43c3116c27ed893e88b02ecfcb44f2166f9c0b7f2a0d')
+        tools.get('http://www.zlib.net/zlib-%s.tar.gz' % self.source_version,
+                  sha256='c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1')
 
         # zlib.h contains the license in the first block comment.
         # Truncate it at the end of that comment.
