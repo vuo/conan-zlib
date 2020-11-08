@@ -1,19 +1,26 @@
-from conans import ConanFile, tools
+from conans import ConanFile, CMake, tools
+import os
 import platform
 
 class ZLibConan(ConanFile):
     name = 'zlib'
 
     source_version = '1.2.11'
-    package_version = '1'
+    package_version = '2'
     version = '%s-%s' % (source_version, package_version)
 
-    build_requires = 'llvm/3.3-5@vuo/stable'
+    build_requires = (
+        'llvm/5.0.2-1@vuo/stable',
+        'macos-sdk/11.0-0@vuo/stable',
+    )
     settings = 'os', 'compiler', 'build_type', 'arch'
     url = 'http://zlib.net/'
     license = 'http://zlib.net/zlib_license.html'
     description = 'A compression library'
     source_dir = 'zlib-%s' % source_version
+    generators = 'cmake'
+
+    build_dir = '_build'
     install_dir = '_install'
 
     def requirements(self):
@@ -31,27 +38,29 @@ class ZLibConan(ConanFile):
         self.run('sed "/\\*\\//q" %s/zlib.h > %s/%s.txt' % (self.source_dir, self.source_dir, self.name))
 
     def build(self):
-        with tools.chdir(self.source_dir):
-            cflags = '-Oz'
-            ldflags = '-Oz'
+        cmake = CMake(self)
+        cmake.definitions['CONAN_DISABLE_CHECK_COMPILER'] = True
+        cmake.definitions['CMAKE_CXX_FLAGS'] = '-Oz -std=c++11 -stdlib=libc++'
+        cmake.definitions['CMAKE_CXX_COMPILER'] = self.deps_cpp_info['llvm'].rootpath + '/bin/clang++'
+        cmake.definitions['CMAKE_SHARED_LINKER_FLAGS'] = cmake.definitions['CMAKE_EXE_LINKER_FLAGS'] = '-stdlib=libc++'
+        cmake.definitions['CMAKE_INSTALL_PREFIX'] = '%s/%s' % (os.getcwd(), self.install_dir)
+        if platform.system() == 'Darwin':
+            cmake.definitions['CMAKE_OSX_ARCHITECTURES'] = 'x86_64;arm64'
+            cmake.definitions['CMAKE_OSX_DEPLOYMENT_TARGET'] = '10.11'
+            cmake.definitions['CMAKE_OSX_SYSROOT'] = self.deps_cpp_info['macos-sdk'].rootpath
 
-            if platform.system() == 'Darwin':
-                cflags += ' -mmacosx-version-min=10.10'
-                ldflags += ' -mmacosx-version-min=10.10 -Wl,-headerpad_max_install_names -Wl,-install_name,@rpath/libz.dylib'
-
-            env_vars = {
-                'CC' : self.deps_cpp_info['llvm'].rootpath + '/bin/clang',
-                'CXX': self.deps_cpp_info['llvm'].rootpath + '/bin/clang++',
-                'CFLAGS': cflags,
-                'LDFLAGS': ldflags,
-            }
-            with tools.environment_append(env_vars):
-                self.run('./configure --prefix=../%s --archs="-arch x86_64" --64' % self.install_dir)
-                self.run('make')
-                self.run('make install')
+        tools.mkdir(self.build_dir)
+        with tools.chdir(self.build_dir):
+            cmake.configure(source_dir='../%s' % self.source_dir,
+                            build_dir='.',
+                            args=['-Wno-dev', '--no-warn-unused-cli'])
+            cmake.build()
+            cmake.install()
 
         with tools.chdir(self.install_dir):
-            if platform.system() == 'Linux':
+            if platform.system() == 'Darwin':
+                self.run('install_name_tool -id @rpath/libz.dylib lib/libz.dylib')
+            elif platform.system() == 'Linux':
                 patchelf = self.deps_cpp_info['patchelf'].rootpath + '/bin/patchelf'
                 self.run('%s --set-soname libz.so lib/libz.so' % patchelf)
 
